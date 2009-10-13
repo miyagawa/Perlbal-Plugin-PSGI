@@ -1,5 +1,9 @@
 package Perlbal::Plugin::PSGI;
 use strict;
+use warnings;
+use 5.008_001;
+our $VERSION = '0.01';
+
 use Perlbal;
 use Plack::Util;
 use Plack::HTTPParser qw(parse_http_request);
@@ -118,5 +122,9 @@ inside Perlbal process.
 Tatsuhiko Miyagawa E<lt>miyagawa@bulknews.netE<gt>
 
 Based on Perlbal::Plugin::Cgilike written by Martin Atkins.
+
+=head1 LICENSE
+
+This module is licensed under the same terms as Perl itself.
 
 =cut

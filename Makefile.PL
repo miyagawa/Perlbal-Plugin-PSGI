@@ -3,6 +3,8 @@ name 'Perlbal-Plugin-PSGI';
 all_from 'lib/Perlbal/Plugin/PSGI.pm';
 readme_from 'lib/Perlbal/Plugin/PSGI.pm';
 build_requires 'Test::More';
+requires 'Perlbal';
+requires 'Plack::Test::Suite';
 use_test_base;
 auto_include_deps;
 author_tests('xt');
