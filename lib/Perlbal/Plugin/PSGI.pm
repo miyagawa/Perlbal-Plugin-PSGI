@@ -33,6 +33,7 @@ sub handle_request {
         'psgi.run_once'     => Plack::Util::FALSE,
         'psgi.multithread'  => Plack::Util::FALSE,
         'psgi.multiprocess' => Plack::Util::FALSE,
+        'psgi.streaming'    => Plack::Util::TRUE,
         REMOTE_ADDR         => $pb->{peer_ip},
         SERVER_NAME         => (split /:/, $svc->{listen})[0],
         SERVER_PORT         => (split /:/, $svc->{listen})[1],
@@ -47,20 +48,30 @@ sub handle_request {
     open my $input, "<", $buf_ref;
     $env->{'psgi.input'} = $input;
 
+    my $responder = sub {
+        my $res = shift;
+
+        my $buf = "HTTP/1.0 $res->[0] @{[ HTTP::Status::status_message($res->[0]) ]}\015\012";
+        while (my($k, $v) = splice @{$res->[1]}, 0, 2) {
+            $buf .="$k: $v\015\012";
+        }
+        $buf .= "\015\012";
+        $pb->write($buf);
+
+        if (!defined $res->[2]) {
+            return Plack::Util::inline_object
+                write => sub { $pb->write(@_) },
+                close => sub { $pb->http_response_sent };
+        } elsif (Plack::Util::is_real_fh($res->[2])) {
+            $pb->reproxy_fh($res->[2], -s $res->[2]);
+        } else {
+            Plack::Util::foreach($res->[2], sub { $pb->write(@_) });
+            $pb->write(sub { $pb->http_response_sent });
+        }
+    };
+
     my $res = Plack::Util::run_app $app, $env;
-
-    $pb->write("HTTP/1.0 $res->[0] @{[ HTTP::Status::status_message($res->[0]) ]}\015\012");
-    while (my($k, $v) = splice @{$res->[1]}, 0, 2) {
-        $pb->write("$k: $v\015\012");
-    }
-    $pb->write("\015\012");
-
-    if (Plack::Util::is_real_fh($res->[2])) {
-        $pb->reproxy_fh($res->[2], -s $res->[2]);
-    } else {
-        Plack::Util::foreach($res->[2], sub { $pb->write(@_) });
-        $pb->write(sub { $pb->http_response_sent });
-    }
+    ref $res eq 'CODE' ? $res->($responder) : $responder->($res);
 }
 
 sub handle_psgi_app_command {
