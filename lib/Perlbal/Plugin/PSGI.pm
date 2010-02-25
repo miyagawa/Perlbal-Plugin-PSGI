@@ -6,8 +6,6 @@ our $VERSION = '0.01';
 
 use Perlbal;
 use Plack::Util;
-use Plack::HTTPParser qw(parse_http_request);
-use HTTP::Status;
 
 sub register {
     my ($class, $svc) = @_;
@@ -47,18 +45,82 @@ sub unload {
     return 1;
 }
 
+our $HR_RECURSION = 0;
+
 sub handle_request {
     my $svc = shift;
     my $pb = shift;
+
+    return 0 if $HR_RECURSION;
+    local $HR_RECURSION = 1;
 
     my $app = $svc->{extra_config}->{_psgi_app};
     unless (defined $app) {
         return $pb->send_response(500, "No PSGI app is configured for this service");
     }
 
+    Perlbal::Plugin::PSGI::Client->new_from_base($pb);
+
+    return 1;
+}
+
+package Perlbal::Plugin::PSGI::Client;
+
+use strict;
+use warnings;
+use base "Perlbal::ClientProxy";
+use fields;
+
+sub request_backend {
+    my Perlbal::Plugin::PSGI::Client $self = shift;
+    my $backend = Perlbal::Plugin::PSGI::Backend->new;
+    $backend->assign_client($self);
+}
+
+package Perlbal::Plugin::PSGI::Backend;
+
+use strict;
+use warnings;
+
+use Perlbal::ClientHTTPBase;
+use Perlbal::Service;
+
+use Plack::Util;
+use Plack::HTTPParser qw(parse_http_request);
+use HTTP::Status;
+
+sub new {
+    my $class = shift;
+    my $self = bless {}, (ref $class || $class);
+    $self->{input} = [];
+    $self->{remaining} = 0;
+    return $self;
+}
+
+sub close {
+    # Do we need to do any cleanup?
+}
+
+sub write {
+    my $self = shift;
+    my $bufref = shift;
+    my $input = $self->{input};
+    push @$input, $bufref;
+    $self->{remaining} -= length($$bufref);
+    return if $self->{remaining};
+    $self->run_request;
+}
+
+sub assign_client {
+    my $self = shift;
+    my Perlbal::ClientHTTPBase $pb = shift;
+    my Perlbal::Service $svc = $pb->{service};
+    $self->{client} = $pb;
+    $pb->backend($self);
+
     my $hdr = $pb->{req_headers} or return 0;
 
-    my $env = {
+    my $env = $self->{env} = {
         'psgi.version'      => [ 1, 0 ],
         'psgi.errors'       => Plack::Util::inline_object(print => sub { Perlbal::log('error', @_) }),
         'psgi.url_scheme'   => 'http',
@@ -74,10 +136,21 @@ sub handle_request {
 
     parse_http_request($pb->{headers_string}, $env);
 
-    my $buf_ref = \"";
     if ($env->{CONTENT_LENGTH}) {
-        $buf_ref = $pb->read($env->{CONTENT_LENGTH}) || \"";
+        $self->{remaining} = $env->{CONTENT_LENGTH};
+    } else {
+        $self->run_request;
     }
+}
+
+sub run_request {
+    my $self = shift;
+
+    my Perlbal::ClientHTTPBase $pb = $self->{client};
+    my Perlbal::Service $svc = $pb->{service};
+    my $app = $svc->{extra_config}->{_psgi_app};
+    my $env = $self->{env};
+    my $buf_ref = \join('', map { $$_ } @{$self->{input}});
     open my $input, "<", $buf_ref;
     $env->{'psgi.input'} = $input;
 
