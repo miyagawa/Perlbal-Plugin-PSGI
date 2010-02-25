@@ -14,6 +14,39 @@ sub register {
     $svc->register_hook('PSGI', 'start_http_request', sub { Perlbal::Plugin::PSGI::handle_request($svc, $_[0]); });
 }
 
+sub handle_psgi_app_command {
+    my $mc = shift->parse(qr/^psgi_app\s*=\s*(\S+)$/, "usage: PSGI_APP=<path>");
+    my ($app_path) = $mc->args;
+
+    my $handler = Plack::Util::load_psgi $app_path;
+    my $svcname;
+    unless ($svcname ||= $mc->{ctx}{last_created}) {
+        return $mc->err("No service name in context from CREATE SERVICE <name> or USE <service_name>");
+    }
+
+    my $svc = Perlbal->service($svcname);
+    return $mc->err("Non-existent service '$svcname'") unless $svc;
+
+    my $cfg = $svc->{extra_config}->{_psgi_app} = $handler;
+
+    return 1;
+}
+
+sub unregister {
+    my ($class, $svc) = @_;
+    $svc->unregister_hooks('PSGI');
+    return 1;
+}
+
+sub load {
+    Perlbal::register_global_hook('manage_command.psgi_app', \&Perlbal::Plugin::PSGI::handle_psgi_app_command);
+    return 1;
+}
+
+sub unload {
+    return 1;
+}
+
 sub handle_request {
     my $svc = shift;
     my $pb = shift;
@@ -72,39 +105,6 @@ sub handle_request {
 
     my $res = Plack::Util::run_app $app, $env;
     ref $res eq 'CODE' ? $res->($responder) : $responder->($res);
-}
-
-sub handle_psgi_app_command {
-    my $mc = shift->parse(qr/^psgi_app\s*=\s*(\S+)$/, "usage: PSGI_APP=<path>");
-    my ($app_path) = $mc->args;
-
-    my $handler = Plack::Util::load_psgi $app_path;
-    my $svcname;
-    unless ($svcname ||= $mc->{ctx}{last_created}) {
-        return $mc->err("No service name in context from CREATE SERVICE <name> or USE <service_name>");
-    }
-
-    my $svc = Perlbal->service($svcname);
-    return $mc->err("Non-existent service '$svcname'") unless $svc;
-
-    my $cfg = $svc->{extra_config}->{_psgi_app} = $handler;
-
-    return 1;
-}
-
-sub unregister {
-    my ($class, $svc) = @_;
-    $svc->unregister_hooks('PSGI');
-    return 1;
-}
-
-sub load {
-    Perlbal::register_global_hook('manage_command.psgi_app', \&Perlbal::Plugin::PSGI::handle_psgi_app_command);
-    return 1;
-}
-
-sub unload {
-    return 1;
 }
 
 1;
