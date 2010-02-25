@@ -11,7 +11,7 @@ use HTTP::Status;
 
 sub register {
     my ($class, $svc) = @_;
-    $svc->register_hook('PSGI', 'start_http_request', sub { Perlbal::Plugin::PSGI::handle_request($svc, $_[0]); });
+    $svc->register_hook('PSGI', 'start_http_request', sub { handle_request($svc, $_[0]); });
 }
 
 sub handle_psgi_app_command {
@@ -39,7 +39,7 @@ sub unregister {
 }
 
 sub load {
-    Perlbal::register_global_hook('manage_command.psgi_app', \&Perlbal::Plugin::PSGI::handle_psgi_app_command);
+    Perlbal::register_global_hook('manage_command.psgi_app', \&handle_psgi_app_command);
     return 1;
 }
 
