@@ -119,6 +119,7 @@ sub assign_client {
     $pb->backend($self);
 
     my $hdr = $pb->{req_headers} or return 0;
+    my ($server_name, $server_port) = split /:/, ($pb->{selector_svc} ? $pb->{selector_svc}->{listen} : $svc->{listen});
 
     my $env = $self->{env} = {
         'psgi.version'      => [ 1, 0 ],
@@ -130,8 +131,8 @@ sub assign_client {
         'psgi.multiprocess' => Plack::Util::FALSE,
         'psgi.streaming'    => Plack::Util::TRUE,
         REMOTE_ADDR         => $pb->{peer_ip},
-        SERVER_NAME         => (split /:/, $svc->{listen})[0],
-        SERVER_PORT         => (split /:/, $svc->{listen})[1],
+        SERVER_NAME         => $server_name,
+        SERVER_PORT         => $server_port,
     };
 
     parse_http_request($pb->{headers_string}, $env);
