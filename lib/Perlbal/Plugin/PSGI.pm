@@ -104,6 +104,10 @@ sub close {
     # Do we need to do any cleanup?
 }
 
+sub forget_client {
+    # Do we need to do any cleanup?
+}
+
 sub write {
     my $self = shift;
     my $bufref = shift;
@@ -161,17 +165,21 @@ sub run_request {
     my $responder = sub {
         my $res = shift;
 
-        my $buf = "HTTP/1.0 $res->[0] @{[ HTTP::Status::status_message($res->[0]) ]}\015\012";
+        my $hd = $pb->{res_headers} = Perlbal::HTTPHeaders->new_response($res->[0]);
         while (my($k, $v) = splice @{$res->[1]}, 0, 2) {
-            $buf .="$k: $v\015\012";
+            $hd->header($k, $v);
         }
-        $buf .= "\015\012";
-        $pb->write($buf);
+
+        $pb->setup_keepalive($hd);
+
+        $pb->state('xfer_resp');
+        $pb->tcp_cork(1);  # cork writes to self
+        $pb->write($hd->to_string_ref);
 
         if (!defined $res->[2]) {
             return Plack::Util::inline_object
                 write => sub { $pb->write(@_) },
-                close => sub { $pb->http_response_sent };
+                close => sub { $pb->write(sub { $pb->http_response_sent}) };
         } elsif (Plack::Util::is_real_fh($res->[2])) {
             $pb->reproxy_fh($res->[2], -s $res->[2]);
         } else {
