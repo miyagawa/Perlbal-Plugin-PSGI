@@ -38,10 +38,13 @@ sub unregister {
 
 sub load {
     Perlbal::register_global_hook('manage_command.psgi_app', \&handle_psgi_app_command);
+    Perlbal::Service::add_role('psgi_server', sub { Perlbal::Plugin::PSGI::Client->new(@_) });
     return 1;
 }
 
 sub unload {
+    Perlbal::unregister_global_hook('manage_command.psgi_app');
+    Perlbal::Service::remove_role('psgi_server');
     return 1;
 }
 
