@@ -166,8 +166,14 @@ sub run_request {
         my $res = shift;
 
         my $hd = $pb->{res_headers} = Perlbal::HTTPHeaders->new_response($res->[0]);
+        my %seen;
         while (my($k, $v) = splice @{$res->[1]}, 0, 2) {
-            $hd->header($k, $v);
+            if ($seen{lc($k)}++) {
+                my $newvalue = $hd->header($k) . "\015\012$k: $v";
+                $hd->header($k, $newvalue);
+            } else {
+                $hd->header($k, $v);
+            }
         }
 
         $pb->setup_keepalive($hd);
