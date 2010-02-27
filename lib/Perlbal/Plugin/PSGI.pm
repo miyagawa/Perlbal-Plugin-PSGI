@@ -208,9 +208,8 @@ Perlbal::Plugin::PSGI - PSGI web server on Perlbal
 
   LOAD PSGI
   CREATE SERVICE psgi
-    SET role    = web_server
+    SET role    = psgi_server
     SET listen  = 127.0.0.1:80
-    SET plugins = psgi
     PSGI_APP    = /path/to/app.psgi
   ENABLE psgi
 

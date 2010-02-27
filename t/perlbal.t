@@ -60,8 +60,8 @@ LOAD PSGI
 
 CREATE SERVICE psgi
   SET listen        = 127.0.0.1:$port
-  SET role          = web_server
-  SET plugins       = psgi
+  SET role          = psgi_server
+  SET persist_client = yes
   PSGI_APP          = $psgi_path
 ENABLE psgi
 
