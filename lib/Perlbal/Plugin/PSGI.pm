@@ -2,7 +2,7 @@ package Perlbal::Plugin::PSGI;
 use strict;
 use warnings;
 use 5.008_001;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Perlbal;
 use Plack::Util;
