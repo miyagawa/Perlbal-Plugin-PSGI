@@ -9,16 +9,15 @@ use FindBin;
 use Plack::Test::Suite;
 
 
+chomp(my $perlbal_bin = `which perlbal`);
+plan skip_all => 'perlbal not found in PATH'
+    unless $perlbal_bin && -x $perlbal_bin;
+
 Plack::Test::Suite->run_server_tests(\&run_perlbal);
 done_testing();
 
 sub run_perlbal {
     my $port = shift;
-
-    chomp(my $perlbal_bin = `which perlbal`);
-
-    plan skip_all => 'perlbal not found in PATH'
-        unless $perlbal_bin && -x $perlbal_bin;
 
     my $tmpdir = File::Temp::tempdir( CLEANUP => 1 );
 
