@@ -13,8 +13,13 @@ DESCRIPTION
     This is a Perlbal plugin to allow any PSGI application run natively
     inside Perlbal process.
 
+COPYRIGHT
+    Copyright 2009- Tatsuhiko Miyagawa
+
 AUTHOR
-    Tatsuhiko Miyagawa <miyagawa@bulknews.net>
+    Tatsuhiko Miyagawa
+
+    Jonathan Steinert
 
     Based on Perlbal::Plugin::Cgilike written by Martin Atkins.
 

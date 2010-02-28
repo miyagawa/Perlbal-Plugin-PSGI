@@ -2,7 +2,7 @@ package Perlbal::Plugin::PSGI;
 use strict;
 use warnings;
 use 5.008_001;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Perlbal;
 use Plack::Util;
@@ -218,9 +218,15 @@ Perlbal::Plugin::PSGI - PSGI web server on Perlbal
 This is a Perlbal plugin to allow any PSGI application run natively
 inside Perlbal process.
 
+=head1 COPYRIGHT
+
+Copyright 2009- Tatsuhiko Miyagawa
+
 =head1 AUTHOR
 
-Tatsuhiko Miyagawa E<lt>miyagawa@bulknews.netE<gt>
+Tatsuhiko Miyagawa
+
+Jonathan Steinert
 
 Based on Perlbal::Plugin::Cgilike written by Martin Atkins.
 
